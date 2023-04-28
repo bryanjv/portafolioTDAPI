@@ -58,6 +58,15 @@ myRouter.get("/api/v1/restaurant/:rut", async (req,res)=>{ //Traer Restaurant po
     }
 });
 
+myRouter.get("/api/v1/restaurants", async (req,res) => {
+    try {
+        const result = await dbase.getRestaurants();
+        res.json(result);
+    } catch (error) {
+        res.send("Error al traer los clientes");
+    }
+})
+
 myRouter.post("/api/v1/restaurant", async (req,res) => { //Crear Restaurant
     try {
         const restaurant_details = {
