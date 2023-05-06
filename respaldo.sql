@@ -38,6 +38,7 @@ CREATE TABLE IF NOT EXISTS public.menu
     menuid INTEGER NOT NULL GENERATED ALWAYS AS IDENTITY ( INCREMENT 1 START 1 MINVALUE 1 MAXVALUE 2147483647 CACHE 1 ),
     menuname character varying(30) COLLATE pg_catalog."default" NOT NULL,
     menuprice integer NOT NULL,
+    stock integer NOT NULL,
     category_id integer NOT NULL,
     restaurant_id integer NOT NULL,
     CONSTRAINT menu_pkey PRIMARY KEY (menuid)
@@ -49,6 +50,7 @@ CREATE TABLE IF NOT EXISTS public.menu_order
     menu_id integer NOT NULL,
     menu_order_price integer NOT NULL,
     menu_order_quantity integer NOT NULL,
+    menu_order_comments CHARACTER varying(255) COLLATE pg_catalog."default",
     CONSTRAINT menu_order_pkey PRIMARY KEY (order_id, menu_id)
 );
 
@@ -59,6 +61,7 @@ CREATE TABLE IF NOT EXISTS public."order"
     orderdate date NOT NULL,
     orderstate boolean NOT NULL,
     client_id integer NOT NULL,
+    restaurant_id integer not null,
     CONSTRAINT order_pkey PRIMARY KEY (orderid)
 );
 
@@ -87,6 +90,7 @@ CREATE TABLE IF NOT EXISTS public."user"
     userid INTEGER NOT NULL GENERATED ALWAYS AS IDENTITY ( INCREMENT 1 START 1 MINVALUE 1 MAXVALUE 2147483647 CACHE 1 ),
     username character varying(15) COLLATE pg_catalog."default" NOT NULL,
     userpassword character varying(80) COLLATE pg_catalog."default" NOT NULL,
+    isEmployee BOOLEAN NOT NULL,
     CONSTRAINT user_pkey PRIMARY KEY (userid)
 );
 
@@ -94,6 +98,7 @@ CREATE TABLE IF NOT EXISTS public.user_restaurant
 (
     user_id integer NOT NULL,
     restaurant_id integer NOT NULL,
+    user_restaurant_name CHARACTER varying(15) COLLATE pg_catalog."default" NOT NULL,
     CONSTRAINT user_restaurant_pkey PRIMARY KEY (user_id, restaurant_id)
 );
 
@@ -173,5 +178,13 @@ ALTER TABLE IF EXISTS public.user_restaurant
     REFERENCES public."user" (userid) MATCH SIMPLE
     ON UPDATE NO ACTION
     ON DELETE NO ACTION;
+
+insert into region (regionname) values ('Region de Valparaiso');
+
+insert into district (districtname) values ('Viña del Mar');
+
+insert into category (categoryname) values ('Plato principal');
+
+
 
 END;
