@@ -1,6 +1,6 @@
 import * as dotenv from 'dotenv';
 
-dotenv.config();
+dotenv.config(); //Variables de entorno 
 
 export const HOST = process.env.HOST;
 export const USER = process.env.USER;

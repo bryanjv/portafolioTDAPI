@@ -1,20 +1,20 @@
 import pg from "pg";
-import { HOST, USER, DATABASE, PGPASSWORD, PGPORT } from '../src/config.js';
+import { HOST, USER, DATABASE, PGPASSWORD, PGPORT } from '../src/config.js'; //Trae los datos importantes de un .env
 
 export default class DBase {
     constructor() {
         this.pool = exportConnection();
     };
 
-    async getClients() {
+    async getClients() { //Query que trae a todos los clientes
         console.log("INICIO DE QUERY getClients");
-        const result = await this.pool.query("SELECT * FROM client");
+        const result = await this.pool.query("SELECT clientid, clientname, clientphone, clientemail, userid FROM client");
         result.release;
         console.log("FIN DE QUERY getClients");
         return result.rows;
     }
 
-    async getClientsByEmail(email) {
+    async getClientsByEmail(email) { //Query que trae todos los clientes por Email
         console.log("INICIO DE QUERY getClientsByEmail");
         const result = await this.pool.query("SELECT clientname,clientphone,clientemail FROM client WHERE clientemail=$1)", [email]);
         result.release;
@@ -22,7 +22,7 @@ export default class DBase {
         return result.rows
     }
 
-    async setClient(user_details) {
+    async setClient(user_details) { //Crea un nuevo usuario seteado para cliente y un nuevo cliente
         console.log("INICIO DE QUERY setClient");
         const result = await this.pool.query(
         `insert into 
@@ -66,15 +66,7 @@ export default class DBase {
 
     }
 
-    async editClient() {
-        //Logica para editar un cliente
-    }
-
-    async deleteClient() {
-        //Logica para eliminar un cliente
-    }
-
-    async getRestaurants() {
+    async getRestaurants() { //Query que trae todos los restaurants existentes en la BD
         console.log("INICIO DE QUERY getRestaurants");
         const result = await this.pool.query("SELECT restaurantid,restaurantrut,restaurantname,restaurantaddress,restaurantphone,restaurantemail,districtname,regionname FROM restaurant INNER JOIN district ON restaurant.district_id = district.districtid INNER JOIN region ON restaurant.region_id = region.regionid");
         result.release;
@@ -82,7 +74,7 @@ export default class DBase {
         return result.rows;
     }
 
-    async getRestaurantsById(id) {
+    async getRestaurantsById(id) { //Query que trae a un restaurant por ID
         console.log("INICIO DE QUERY getRestaurantsById");
         const result = await this.pool.query(`SELECT restaurantid,restaurantrut,restaurantname,restaurantaddress,restaurantphone,restaurantemail,districtname,regionname FROM restaurant INNER JOIN district ON restaurant.district_id = district.districtid INNER JOIN region ON restaurant.region_id = region.regionid WHERE restaurantid = $1`, [id]);
         result.release;
@@ -90,7 +82,7 @@ export default class DBase {
         return result.rows;
     }
 
-    async setRestaurant(restaurant_details) {
+    async setRestaurant(restaurant_details) { //Crea un nuevo restaurant
         console.log("INICIO DE QUERY setRestaurant");
         const result = await this.pool.query(
             `insert into 
@@ -122,61 +114,105 @@ export default class DBase {
         return true; 
     }
 
-    async editRestaurant() {
-        //Logica para editar un restaurant
-    }
-
-    async deleteRestaurant() {
-        //Logica para eliminar un restaurant
-    }
-
-    async getOrderByRestaurant(restaurantid) {
+    async getOrderByRestaurant(restaurantid) { //Query para traer todas las ordenes de un restaurant
         console.log("INICIO DE QUERY getOrderByRestaurant");
-        const result = await this.pool.query("SELECT (orderid, ordertable, orderstate, ordername, clientname FROM order INNER JOIN client ON order.client_id = client.clientid INNER JOIN restaurant ON order.restaurantid = restaurant.restaurantid WHERE restaurantid = $1", [restaurantid]);
+        const result = await this.pool.query('SELECT orderid, ordertable, orderdate, orderstate, clientname FROM "order" INNER JOIN client ON "order".client_id = client.clientid INNER JOIN restaurant ON "order".restaurant_id = restaurant.restaurantid WHERE restaurant_id = $1', [restaurantid]);
         result.release;
         console.log("FIN DE QUERY getOrderByRestaurant");
         return result.rows;
     }
 
-    async getOrderByClient(clientid) {
-        console.log("INICIO DE QUERY getOrderByClient");
-        const result = await this.pool.query("SELECT (orderid, ordertable, orderstate, ordername, clientname FROM order INNER JOIN client ON order.client_id = client.clientid WHERE clientid = $1", [clientid]);
+    async setOrder(order_details) { //Crea una nueva orden
+        console.log("INICIO DE QUERY setOrder");
+        const result3 = await this.pool.query(
+            "SELECT * FROM client WHERE user_id=$1",[order_details.userid]
+        )
+        console.log(order_details.userid);
+        const result = await this.pool.query(
+            `insert into 
+                "order"
+                (
+                    ordertable, 
+                    orderdate,
+                    orderstate, 
+                    client_id, 
+                    restaurant_id 
+                    )
+                values
+                (
+                    $1, 
+                    $2, 
+                    $3, 
+                    $4,
+                    $5
+            ) RETURNING orderid`
+            ,[Math.floor(Math.random() * 10) + 1, "now",true, result3.rows[0].clientid, order_details.restaurant_id])
+            
+            order_details.items.forEach(async element => {
+                const result2 = await this.pool.query(
+                    `insert into
+                        menu_order
+                        (
+                            order_id,
+                            menu_id,
+                            menu_order_price,
+                            menu_order_quantity,
+                            menu_order_comments
+                        )
+                        values
+                        (
+                            $1,
+                            $2,
+                            $3,
+                            $4,
+                            $5
+                        );`,[result.rows[0].orderid,element.menuid,element.menuprice,element.quantity,'-']
+                )
+
+                result2.release;
+            });
+        
+        
         result.release;
-        console.log("FIN DE QUERY getOrderByClient");
+        console.log("FIN DE QUERY setRestaurant");
+
+        return true; 
+    }
+
+    async editOrder(orderid) { //Cambia la orden de true a false, lo cual implica que en false la orden esta completa
+        console.log("INICIO DE QUERY editOrder");
+        const result = await this.pool.query('UPDATE "order" SET orderstate= false WHERE orderid=$1',[orderid]);
+        
+        return true;
+    }
+
+    async starFood(restaurantid){ //Query que trae todos los platos de un restaurant, utilizando Group By para agrupar todos los platillos y ordenarlos por precio total obtenido de manera descendente utilizando ORDER BY DESC 
+        console.log("INICIO DE QUERY starFood");
+        const result = await this.pool.query('SELECT m.menuname, SUM(mo.menu_order_price * mo.menu_order_quantity) AS total_income FROM menu m INNER JOIN menu_order mo ON m.menuid = mo.menu_id INNER JOIN "order" o ON mo.order_id = o.orderid WHERE o.restaurant_id = $1 GROUP BY m.menuid, m.menuname ORDER BY total_income DESC;', [restaurantid])
+        console.log("FIN DE QUERY starFood");
+
         return result.rows;
     }
 
-    async setOrder() {
-        //Logica para agregar nueva orden
-    }
-
-    async editOrder() {
-        //logica para editar orden
-    }
-
-    async deleteOrder() {
-        //Logica para eliminar una orden
-    }
-
-    async getMenuByRestaurant(restaurantid) {
+    async getMenuByRestaurant(restaurantid) { //Query para obtener el menu de un restaurant
         console.log("INICIO DE QUERY getMenuByRestaurant");
-        const result = await this.pool.query("SELECT menuname, menuprice, stock, categoryname FROM menu INNER JOIN category ON menu.category_id = category.categoryid WHERE restaurant_id = $1", [restaurantid])
+        const result = await this.pool.query("SELECT menuid, menuname, menuprice, stock, restaurant_id, categoryname FROM menu INNER JOIN category ON menu.category_id = category.categoryid WHERE restaurant_id = $1", [restaurantid])
         console.log("FIN DE QUERY getMenuByRestaurant");
 
         return result.rows;
     }
 
-    async setMenu(menu_details){
+    async setMenu(menu_details){ //Query para crear un nuevo menu
         console.log("INICIO DE QUERY setMenu");
         const result = await this.pool.query(
             `insert into 
-                menu 
+                menu
                 (
                     menuname, 
                     menuprice,
                     stock, 
                     category_id, 
-                    restaurant_id,
+                    restaurant_id
                     )
                 values
                 (
@@ -186,7 +222,7 @@ export default class DBase {
                     $4,
                     $5
             );`
-            ,[menu_details.menuname, menu_details.menuprice, menu_details.stock, 1, 1])
+            ,[menu_details.menuname, menu_details.menuprice, menu_details.stock, 1, menu_details.restaurant_id])
             
         result.release;
         console.log("FIN DE QUERY setMenu");
@@ -194,39 +230,7 @@ export default class DBase {
             return true; 
     }
 
-    async editMenu() {
-        //Logica para editar un plato de un restaurant
-    }
-
-    async deleteMenu() {
-        //Logica para eliminar un plato de un restaurant
-    }
-
-    async getCategory() {
-        //Logica para obtener categorias
-    }
-
-    async setCategory() {
-        //Logica para crear una categoria
-    }
-
-    async editCategory() {
-        //Logica para editar el nombre de una categoria
-    }
-
-    async deleteCategory() {
-        //Logica para eliminar una categoria
-    }
-
-    async getMenuOrderbyId(orderid) {
-        //Logica para obtener los detalles de una orden
-    }
-
-    async getUsers() {
-        //Logica para traer a todos los usuarios
-    }
-
-    async getUserByUsername(username){
+    async getUserByUsername(username){ //Query para obtener un usuario por username
         console.log("INICIO DE QUERY getUserByUsername");
         const result = await this.pool.query("SELECT userid, username, userpassword, isemployee FROM public.user WHERE username=$1",[username])
         
@@ -241,7 +245,7 @@ export default class DBase {
         return result.rows;
     }
 
-    async setUserByRestaurant(user_restaurant_details){
+    async setUserByRestaurant(user_restaurant_details){ // Query para crear un empleado de restaurant
         console.log("INICIO DE QUERY setUserByRestaurant");
         console.log(user_restaurant_details);
         const result = await this.pool.query(
@@ -281,18 +285,9 @@ export default class DBase {
 
         return true;
     }
-
-    async editUser() {
-        //Logica para editar un usuario
-    }
-
-    async deleteUser() {
-        //Logica para eliminar un usuario
-    }
-
 };
 
-function exportConnection() {
+function exportConnection() { //Funcion que contiene la informacion de la base de datos
 
     const { Pool } = pg;
 
@@ -304,7 +299,7 @@ function exportConnection() {
         port: PGPORT
     })
 
-    pool.connect((err, client, done) => {
+    pool.connect((err, client, done) => { //Funcion connect de prueba
         if (err) throw (err)
     })
 
